@@ -82,9 +82,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    @ExceptionHandler(BusinessException.class)
+    @ExceptionHandler(ValidDateException.class)
     public ResponseEntity<?> handleBusinessException(
-            BusinessException ex,
+            ValidDateException ex,
             HttpServletRequest request) {
 
         return ResponseEntity.badRequest().body(Map.of(

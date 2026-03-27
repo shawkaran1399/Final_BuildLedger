@@ -4,7 +4,7 @@ import com.buildledger.dto.request.ProjectRequest;
 import com.buildledger.dto.response.ProjectResponse;
 import com.buildledger.entity.Project;
 import com.buildledger.entity.User;
-import com.buildledger.exception.BusinessException;
+import com.buildledger.exception.ValidDateException;
 import com.buildledger.exception.ResourceNotFoundException;
 import com.buildledger.repository.ProjectRepository;
 import com.buildledger.repository.UserRepository;
@@ -31,7 +31,7 @@ public class ProjectServiceImpl implements ProjectService {
         log.info("Creating project: {}", request.getName());
 
         if (request.getEndDate().isBefore(request.getStartDate())) {
-            throw new BusinessException("End date cannot be before start date");
+            throw new ValidDateException("End date cannot be before start date");
         }
 
         Project.ProjectBuilder builder = Project.builder()

@@ -9,8 +9,7 @@ import com.buildledger.entity.ContractTerm;
 import com.buildledger.entity.Project;
 import com.buildledger.entity.Vendor;
 import com.buildledger.enums.ContractStatus;
-import com.buildledger.exception.BadRequestException;
-import com.buildledger.exception.BusinessException;
+import com.buildledger.exception.ValidDateException;
 import com.buildledger.exception.ResourceNotFoundException;
 import com.buildledger.repository.ContractRepository;
 import com.buildledger.repository.ContractTermRepository;
@@ -42,7 +41,7 @@ public class ContractServiceImpl implements ContractService {
         //validateDateRange(request.getStartDate(), request.getEndDate());
 
         if (request.getEndDate().isBefore(request.getStartDate())) {
-            throw new BusinessException("End date cannot be before start date");
+            throw new ValidDateException("End date cannot be before start date");
         }
 
         Vendor vendor = vendorRepository.findById(request.getVendorId())
