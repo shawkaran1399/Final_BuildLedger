@@ -1,5 +1,6 @@
 package com.buildledger.entity;
 
+import com.buildledger.enums.ProjectStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -44,9 +45,13 @@ public class Project {
     @Column(name = "end_date")
     private LocalDate endDate;
 
-    @Column(name = "status", length = 50)
+    @Column(name = "actual_end_date")          // add this — auto-set when COMPLETED
+    private LocalDate actualEndDate;
+
+    @Enumerated(EnumType.STRING)               // changed from String to enum
+    @Column(name = "status", nullable = false, length = 50)
     @Builder.Default
-    private String status = "ACTIVE";
+    private ProjectStatus status = ProjectStatus.PLANNING;  // starts as PLANNING
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")

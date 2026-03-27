@@ -3,6 +3,7 @@ package com.buildledger.controller;
 import com.buildledger.dto.request.ProjectRequest;
 import com.buildledger.dto.response.ApiResponse;
 import com.buildledger.dto.response.ProjectResponse;
+import com.buildledger.enums.ProjectStatus;
 import com.buildledger.service.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -60,6 +61,19 @@ public class ProjectController {
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Project updated", projectService.updateProject(projectId, request)));
+    }
+
+    @PatchMapping("/{projectId}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update Project Status",
+            description = "Only Admin and Project Manager can update project Status")
+    public ResponseEntity<ProjectResponse> updateProjectStatus(
+            @PathVariable Long projectId,
+            @RequestParam ProjectStatus newStatus) {
+
+        return ResponseEntity.ok(
+                projectService.updateProjectStatus(projectId, newStatus)
+        );
     }
 
     @DeleteMapping("/{projectId}")

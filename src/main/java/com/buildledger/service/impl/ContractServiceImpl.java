@@ -9,6 +9,8 @@ import com.buildledger.entity.ContractTerm;
 import com.buildledger.entity.Project;
 import com.buildledger.entity.Vendor;
 import com.buildledger.enums.ContractStatus;
+import com.buildledger.exception.BadRequestException;
+import com.buildledger.exception.InvalidStatusTransitionException;
 import com.buildledger.exception.ValidDateException;
 import com.buildledger.exception.ResourceNotFoundException;
 import com.buildledger.repository.ContractRepository;
@@ -95,16 +97,34 @@ public class ContractServiceImpl implements ContractService {
     }
 
     @Override
-    public ContractResponse updateContractStatus(Long contractId, ContractStatus status) {
-        log.info("Updating contract {} status to {}", contractId, status);
+    public ContractResponse updateContractStatus(Long contractId, ContractStatus newStatus) {
+        log.info("Updating contract {} status to {}", contractId, newStatus);
+
         Contract contract = findById(contractId);
-        contract.setStatus(status);
+        ContractStatus currentStatus = contract.getStatus();
+
+        if (!currentStatus.canTransitionTo(newStatus)) {
+            throw new InvalidStatusTransitionException(
+                    currentStatus.name(), newStatus.name()
+            );
+        }
+
+        contract.setStatus(newStatus);
         return mapToResponse(contractRepository.save(contract));
     }
 
     @Override
     public ContractResponse updateContract(Long contractId, ContractRequest request) {
         Contract contract = findById(contractId);
+
+        // block editing if contract is not DRAFT
+        if (contract.getStatus() != ContractStatus.DRAFT) {
+            throw new BadRequestException(
+                    "Contract cannot be edited. Only DRAFT contracts can be modified. " +
+                            "Current status: " + contract.getStatus()
+            );
+        }
+
         if (request.getStartDate() != null) contract.setStartDate(request.getStartDate());
         if (request.getEndDate() != null) contract.setEndDate(request.getEndDate());
         if (request.getValue() != null) contract.setValue(request.getValue());
@@ -125,6 +145,14 @@ public class ContractServiceImpl implements ContractService {
     @Override
     public void deleteContract(Long contractId) {
         Contract contract = findById(contractId);
+
+        if (contract.getStatus() != ContractStatus.DRAFT) {
+            throw new BadRequestException(
+                    "Contract cannot be deleted. Only DRAFT contracts can be deleted. " +
+                            "Current status: " + contract.getStatus()
+            );
+        }
+
         contractRepository.delete(contract);
     }
 
@@ -132,14 +160,24 @@ public class ContractServiceImpl implements ContractService {
     public ContractTermResponse addContractTerm(Long contractId, ContractTermRequest request) {
         log.info("Adding term to contract {}", contractId);
         Contract contract = findById(contractId);
+
+        if (contract.getStatus() != ContractStatus.DRAFT) {
+            throw new BadRequestException(
+                    "Cannot add terms to a contract that is not in DRAFT status. " +
+                            "Current status: " + contract.getStatus()
+            );
+        }
+
         ContractTerm term = ContractTerm.builder()
                 .contract(contract)
                 .description(request.getDescription())
                 .complianceFlag(request.getComplianceFlag() != null ? request.getComplianceFlag() : false)
                 .sequenceNumber(request.getSequenceNumber())
                 .build();
+
         return mapTermToResponse(contractTermRepository.save(term));
     }
+
 
     @Override
     @Transactional(readOnly = true)
@@ -154,6 +192,15 @@ public class ContractServiceImpl implements ContractService {
     public ContractTermResponse editContractTerm(Long termId, ContractTermRequest request) {
         ContractTerm term = contractTermRepository.findById(termId)
                 .orElseThrow(() -> new ResourceNotFoundException("ContractTerm", "id", termId));
+
+        // check parent contract status
+        if (term.getContract().getStatus() != ContractStatus.DRAFT) {
+            throw new BadRequestException(
+                    "Cannot edit terms of a contract that is not in DRAFT status. " +
+                            "Current status: " + term.getContract().getStatus()
+            );
+        }
+
         if (request.getDescription() != null) term.setDescription(request.getDescription());
         if (request.getComplianceFlag() != null) term.setComplianceFlag(request.getComplianceFlag());
         if (request.getSequenceNumber() != null) term.setSequenceNumber(request.getSequenceNumber());
@@ -164,6 +211,15 @@ public class ContractServiceImpl implements ContractService {
     public void deleteContractTerm(Long termId) {
         ContractTerm term = contractTermRepository.findById(termId)
                 .orElseThrow(() -> new ResourceNotFoundException("ContractTerm", "id", termId));
+
+        // check parent contract status
+        if (term.getContract().getStatus() != ContractStatus.DRAFT) {
+            throw new BadRequestException(
+                    "Cannot delete terms of a contract that is not in DRAFT status. " +
+                            "Current status: " + term.getContract().getStatus()
+            );
+        }
+
         contractTermRepository.delete(term);
     }
 

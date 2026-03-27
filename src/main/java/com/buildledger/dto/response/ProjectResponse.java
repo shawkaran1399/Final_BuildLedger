@@ -1,5 +1,6 @@
 package com.buildledger.dto.response;
 
+import com.buildledger.enums.ProjectStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +18,8 @@ public class ProjectResponse {
     private BigDecimal budget;
     private LocalDate startDate;
     private LocalDate endDate;
-    private String status;
+    private LocalDate actualEndDate;
+    private ProjectStatus status;
     private Long managerId;
     private String managerName;
     private LocalDateTime createdAt;

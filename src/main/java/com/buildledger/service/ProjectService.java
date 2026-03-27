@@ -2,6 +2,7 @@ package com.buildledger.service;
 
 import com.buildledger.dto.request.ProjectRequest;
 import com.buildledger.dto.response.ProjectResponse;
+import com.buildledger.enums.ProjectStatus;
 import java.util.List;
 
 public interface ProjectService {
@@ -11,4 +12,5 @@ public interface ProjectService {
     List<ProjectResponse> getProjectsByManager(Long managerId);
     ProjectResponse updateProject(Long projectId, ProjectRequest request);
     void deleteProject(Long projectId);
+    ProjectResponse updateProjectStatus(Long projectId, ProjectStatus newStatus); // add this
 }

@@ -4,6 +4,10 @@ import com.buildledger.dto.request.ProjectRequest;
 import com.buildledger.dto.response.ProjectResponse;
 import com.buildledger.entity.Project;
 import com.buildledger.entity.User;
+import com.buildledger.enums.ProjectStatus;
+import com.buildledger.enums.Role;
+import com.buildledger.exception.BadRequestException;
+import com.buildledger.exception.InvalidStatusTransitionException;
 import com.buildledger.exception.ValidDateException;
 import com.buildledger.exception.ResourceNotFoundException;
 import com.buildledger.repository.ProjectRepository;
@@ -14,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,6 +50,14 @@ public class ProjectServiceImpl implements ProjectService {
         if (request.getManagerId() != null) {
             User manager = userRepository.findById(request.getManagerId())
                     .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getManagerId()));
+
+            if (manager.getRole() != Role.PROJECT_MANAGER) {
+                throw new BadRequestException(
+                        "User '" + manager.getName() + "' is not a PROJECT_MANAGER. " +
+                                "Only users with PROJECT_MANAGER role can be assigned as project manager."
+                );
+            }
+
             builder.manager(manager);
         }
         return mapToResponse(projectRepository.save(builder.build()));
@@ -78,11 +91,54 @@ public class ProjectServiceImpl implements ProjectService {
         if (request.getBudget() != null) project.setBudget(request.getBudget());
         if (request.getStartDate() != null) project.setStartDate(request.getStartDate());
         if (request.getEndDate() != null) project.setEndDate(request.getEndDate());
+
+
         if (request.getManagerId() != null) {
             User manager = userRepository.findById(request.getManagerId())
                     .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getManagerId()));
+
+            if (manager.getRole() != Role.PROJECT_MANAGER) {
+                throw new BadRequestException(
+                        "User '" + manager.getName() + "' is not a PROJECT_MANAGER. " +
+                                "Only users with PROJECT_MANAGER role can be assigned as project manager."
+                );
+            }
+
             project.setManager(manager);
         }
+        return mapToResponse(projectRepository.save(project));
+    }
+
+    @Override
+    public ProjectResponse updateProjectStatus(Long projectId, ProjectStatus newStatus) {
+        log.info("Updating project {} status to {}", projectId, newStatus);
+
+        Project project = findById(projectId);
+        ProjectStatus currentStatus = project.getStatus();
+
+        // check if transition is valid
+        if (!currentStatus.canTransitionTo(newStatus)) {
+            throw new InvalidStatusTransitionException(
+                    currentStatus.name(), newStatus.name()
+            );
+        }
+
+        // auto-set actualEndDate when project is completed
+        if (newStatus == ProjectStatus.COMPLETED) {
+            project.setActualEndDate(LocalDate.now());
+            log.info("Project {} completed. actualEndDate set to {}", projectId, LocalDate.now());
+        }
+
+        // if project is put on hold or cancelled, log it
+        if (newStatus == ProjectStatus.ON_HOLD) {
+            log.info("Project {} put ON_HOLD", projectId);
+        }
+
+        if (newStatus == ProjectStatus.CANCELLED) {
+            log.info("Project {} CANCELLED", projectId);
+        }
+
+        project.setStatus(newStatus);
         return mapToResponse(projectRepository.save(project));
     }
 
@@ -106,6 +162,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .budget(p.getBudget())
                 .startDate(p.getStartDate())
                 .endDate(p.getEndDate())
+                .actualEndDate(p.getActualEndDate())
                 .status(p.getStatus())
                 .managerId(p.getManager() != null ? p.getManager().getUserId() : null)
                 .managerName(p.getManager() != null ? p.getManager().getName() : null)
